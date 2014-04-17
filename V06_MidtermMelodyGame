@@ -1,0 +1,242 @@
+/*
+ * Midterm Game: It's A Match!
+ * Lee Saynor
+ * DIGF 2B03 Physical Computing
+ * OCAD University
+ * Created on Feb 9, 2014
+ *
+ * V03 - Switches between melodies A and B
+ * V04 - 2 controllers with internal pull-up resistors, proper melody: 3 parts so far
+ * V05 - More melody sections, commented out LED nonsense; will restore later
+ * V06 - Condensed numerous arrays into melodies[] and durations[] 2D arrays, removed "if" statements mess in loop, add debugging 
+ *
+ * Based on:
+ * "9.4 Generating Audio Tones and Fading an LED," Arduino Cookbook by Michael Margolis
+ * "Play Melody" Tutorial by D. Cuartielles
+ * "5.2 Using a Switch Without External Resistors," Arduino Cookbook
+ * ...
+ */
+ 
+#include "pitches.h"
+ 
+byte speakerPin = 8;
+//byte ledPins[] = {5, 6, 9, 10};     // LED array  <-------------------------------------RESTORE LATER
+
+//byte buttonPins[] = {2, 4, 7, 12};  // Momentary switch array <-------------------------------------RESTORE LATER
+const int p1Button = 2; 
+
+//          [R][C]
+int melodies[14][9] =
+  {{NOTE_C4,  NOTE_D4,  NOTE_DS4, NOTE_D4,  NOTE_DS4, NOTE_D4,  0,        0,        0},        // 0) My fun-ny val-en-tine,
+   {NOTE_C4,  NOTE_D4,  NOTE_DS4, NOTE_D4,  NOTE_DS4, NOTE_D4,  0,        0,        0},        // 1) sweet com-ic val-en-tine
+   {NOTE_C4,  NOTE_DS4, NOTE_G4,  NOTE_AS4, NOTE_GS4, NOTE_G4,  NOTE_F4,  NOTE_F4,  0},        // 2) You make me smile with my heart.
+   {NOTE_DS4, NOTE_F4,  NOTE_G4,  NOTE_F4,  NOTE_G4,  NOTE_F4,  0,        0,        0},        // 3) Your looks are laugh-a-ble,
+   {NOTE_DS4, NOTE_F4,  NOTE_G4,  NOTE_F4,  NOTE_G4,  NOTE_F4,  0,        0,        0},        // 4) un-pho-to-graph-a-ble,
+   {NOTE_DS4, NOTE_F4,  NOTE_G4,  NOTE_D5,  NOTE_C5,  NOTE_AS4, NOTE_A4,  NOTE_GS4, NOTE_GS4}, // 5) yet you're my fav-'rite work of art.
+   {NOTE_G4,  NOTE_F4,  NOTE_AS4, NOTE_DS4, NOTE_DS4, NOTE_D4,  NOTE_DS4, 0,        0},        // 6) Is your fi-gure less than greek,
+   {NOTE_DS4, NOTE_D4,  NOTE_C5,  NOTE_DS4, NOTE_DS4, NOTE_D4,  NOTE_DS4, 0,        0},        // 7) is your mouth a lit-tle weak,
+   {NOTE_DS4, NOTE_D4,  NOTE_D5,  NOTE_DS4, NOTE_DS4, NOTE_D4,  NOTE_DS4, 0,        0},        // 8) When you o-pen it to speak,
+   {NOTE_F4,  NOTE_G4,  NOTE_C5,  NOTE_C5,  0,        0,        0,        0,        0},        // 9) are you smart?
+   {NOTE_D4,  NOTE_C4,  NOTE_D4,  NOTE_DS4, NOTE_D4,  NOTE_DS4, NOTE_D4,  0,        0},        // 10)But don't change a hair for me,
+   {NOTE_DS4, NOTE_F4,  NOTE_G4,  NOTE_F4,  NOTE_G4,  NOTE_F4,  0,        0,        0},        // 11)not if you care for me,
+   {NOTE_C5,  NOTE_D5,  NOTE_DS5, NOTE_D5,  NOTE_DS5, NOTE_D5,  NOTE_DS5, NOTE_DS5, 0},        // 12)stay fun-ny val-en-tine stay,
+   {NOTE_DS4, NOTE_F4,  NOTE_G4,  NOTE_F4,  NOTE_G4,  NOTE_F4,  NOTE_DS4, 0,        0}};       // 13)each day is val-en-tine's day.
+   
+int durations[14][9] =
+  {{500,      250,      250,      300,      200,      500,      0,        0,        0},        // 0) My fun-ny val-en-tine,
+   {500,      250,      250,      300,      200,      500,      0,        0,        0},        // 1) sweet com-ic val-en-tine
+   {500,      250,      250,      500,      250,      250,      1000,     1000,     0},        // 2) You make me smile with my heart.
+   {500,      250,      250,      300,      200,      500,      0,        0,        0},        // 3) Your looks are laugh-a-ble,
+   {500,      250,      250,      300,      200,      500,      0,        0,        0},        // 4) un-pho-to-graph-a-ble,
+   {500,      250,      250,      300,      200,      300,      200,      1000,     500},      // 5) yet you're my fav-'rite work of art.
+   {250,      250,      500,      200,      250,      250,      500,      0,        0},        // 6) Is your fi-gure less than greek,
+   {250,      250,      500,      200,      250,      250,      500,      0,        0},        // 7) is your mouth a lit-tle weak,
+   {250,      250,      500,      200,      250,      250,      500,      0,        0},        // 8) When you o-pen it to speak,
+   {250,      250,      1000,     500,      0,        0,        0,        0,        0},        // 9) are you smart?
+   {500,      500,      250,      250,      300,      200,      500,      0,        0},        // 10)But don't change a hair for me,
+   {500,      250,      250,      300,      200,      500,      0,        0,        0},        // 11)not if you care for me,
+   {500,      250,      250,      300,      200,      500,      1000,     1000,     0},        // 12)stay fun-ny val-en-tine stay,
+   {500,      250,      250,      300,      200,      500,      1000,     0,        0}};       // 13)each day is val-en-tine's day.
+   
+//int melodyJ[] = {NOTE_C5    // stay fun-ny val-en-tine stay
+
+int section = 0;
+
+//int brightness = 0;  <-------------------------------------RESTORE LATER
+//int increment = 1;  <-------------------------------------RESTORE LATER
+
+void setup() {
+  pinMode(speakerPin, OUTPUT);
+  pinMode(p1Button, INPUT);      // Declare pushbutton as input
+  digitalWrite(p1Button, HIGH);  // *TEMP* Turn on internal pull-ups on the buttonPins
+  /*for (int b = 0; b < 2; b++) {  <-------------------------------------RESTORE LATER
+    pinMode(buttonPins[b], INPUT);
+    digitalWrite(buttonPins[b], HIGH);  // Turn on internal pull-ups on the buttonPins
+  }*/
+  // pins driven by analogWrite do not need to be declared as outputs
+}
+
+void playFrequency(int frequency, int duration) {
+  // Period is one cycle of tone
+  // Period is equal to 1 divided by frequency
+  // Duration is how long the pulsing sound should last in milliseconds
+  int period = 1000000L / frequency;
+  int pulse = period / 2;
+  for (long i = 0; i < duration * 1000L; i += period) {
+    digitalWrite(speakerPin, HIGH);
+    delayMicroseconds(pulse);
+    digitalWrite(speakerPin, LOW);
+    delayMicroseconds(pulse);
+  }
+}
+
+/*void fadeLED(){  <-------------------------------------RESTORE LATER
+  for (int brightness = 0; brightness < 255; brightness++) {
+    for (int p = 0; p < 4; p++) {
+      analogWrite(ledPins[p], brightness);
+    }
+    delay(2);
+  }
+  for (int brightness = 255; brightness >= 0; brightness--) {
+    for (int p = 0; p < 4; p++) {
+      analogWrite(ledPins[p], brightness);
+    }
+    delay(2);
+  }
+}*/
+
+void loop() {
+  /*for (int b = 0; b < 4; b++) {            //<------------------------------------------ WILL FOR LOOP WORK HERE???? lookup in CB
+    int val = digitalRead(buttonPins[b]);
+  }*/
+  int valP1 = digitalRead(p1Button);           // Temp for simple setup
+  //int valP1 = digitalRead(buttonPins[0]);    // Read P1/RED input value  <-------------------------------------RESTORE LATER
+  //int valP2 = digitalRead(buttonPins[1]);    // Read P2/BLUE input value  <-------------------------------------RESTORE LATER
+  //int valP3 = digitalRead(buttonPins[2]);    // Read P3/YEL input value
+  //int valP4 = digitalRead(buttonPins[3]);    // Read P4/GRN input value
+  
+  if ((valP1 == LOW) /*|| (valP2 == LOW) || (valP3 == HIGH) || (valP4 == HIGH)*/) {
+    if (section == 0) {
+      for (int part = 0; part < 14; part++) {
+        //Serial.print("Section ");
+        //Serial.print(part);
+        //Serial.print(" note frequencies: ");
+        for (int m = 0; m < 9; m++) {
+          //Serial.print(melodies[part][m]);
+          playFrequency(melodies[part][m], durations[part][m]*2);
+          //Serial.print(", ");
+        }
+        //Serial.println();
+        delay(120);
+      }
+    }
+ 
+    /*} else {  <-------------------------------------RESTORE LATER
+      fadeLED();    // LED "breathing" effect
+  }*/
+  }
+}
+
+
+
+/* http://books.google.ca/books?id=OyF7FK6OSekC&pg=PA135&lpg=PA135&dq=arduino+multi-dimensional+arrays&source=bl&ots=YVqjGmS-
+Aw&sig=zFCTcYNJ9nVD0ovuljWFxdrptJw&hl=en&sa=X&ei=MX36Up2SMaWF2QWyzYCgBw&ved=0CGoQ6AEwCQ#v=onepage&q=arduino%20multi-dimensiona
+l%20arrays&f=false */
+
+
+
+
+
+/*************************************************
+ * Public Constants
+ *************************************************/
+
+#define NOTE_B0  31
+#define NOTE_C1  33
+#define NOTE_CS1 35
+#define NOTE_D1  37
+#define NOTE_DS1 39
+#define NOTE_E1  41
+#define NOTE_F1  44
+#define NOTE_FS1 46
+#define NOTE_G1  49
+#define NOTE_GS1 52
+#define NOTE_A1  55
+#define NOTE_AS1 58
+#define NOTE_B1  62
+#define NOTE_C2  65
+#define NOTE_CS2 69
+#define NOTE_D2  73
+#define NOTE_DS2 78
+#define NOTE_E2  82
+#define NOTE_F2  87
+#define NOTE_FS2 93
+#define NOTE_G2  98
+#define NOTE_GS2 104
+#define NOTE_A2  110
+#define NOTE_AS2 117
+#define NOTE_B2  123
+#define NOTE_C3  131
+#define NOTE_CS3 139
+#define NOTE_D3  147
+#define NOTE_DS3 156
+#define NOTE_E3  165
+#define NOTE_F3  175
+#define NOTE_FS3 185
+#define NOTE_G3  196
+#define NOTE_GS3 208
+#define NOTE_A3  220
+#define NOTE_AS3 233
+#define NOTE_B3  247
+#define NOTE_C4  262
+#define NOTE_CS4 277
+#define NOTE_D4  294
+#define NOTE_DS4 311
+#define NOTE_E4  330
+#define NOTE_F4  349
+#define NOTE_FS4 370
+#define NOTE_G4  392
+#define NOTE_GS4 415
+#define NOTE_A4  440
+#define NOTE_AS4 466
+#define NOTE_B4  494
+#define NOTE_C5  523
+#define NOTE_CS5 554
+#define NOTE_D5  587
+#define NOTE_DS5 622
+#define NOTE_E5  659
+#define NOTE_F5  698
+#define NOTE_FS5 740
+#define NOTE_G5  784
+#define NOTE_GS5 831
+#define NOTE_A5  880
+#define NOTE_AS5 932
+#define NOTE_B5  988
+#define NOTE_C6  1047
+#define NOTE_CS6 1109
+#define NOTE_D6  1175
+#define NOTE_DS6 1245
+#define NOTE_E6  1319
+#define NOTE_F6  1397
+#define NOTE_FS6 1480
+#define NOTE_G6  1568
+#define NOTE_GS6 1661
+#define NOTE_A6  1760
+#define NOTE_AS6 1865
+#define NOTE_B6  1976
+#define NOTE_C7  2093
+#define NOTE_CS7 2217
+#define NOTE_D7  2349
+#define NOTE_DS7 2489
+#define NOTE_E7  2637
+#define NOTE_F7  2794
+#define NOTE_FS7 2960
+#define NOTE_G7  3136
+#define NOTE_GS7 3322
+#define NOTE_A7  3520
+#define NOTE_AS7 3729
+#define NOTE_B7  3951
+#define NOTE_C8  4186
+#define NOTE_CS8 4435
+#define NOTE_D8  4699
+#define NOTE_DS8 4978
