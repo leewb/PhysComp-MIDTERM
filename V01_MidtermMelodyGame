@@ -1,0 +1,118 @@
+/*
+ * Midterm Game: SoundSoup
+ * Lee Saynor
+ * DIGF 2B03 Physical Computing
+ * OCAD University
+ * Created on Feb 9, 2014
+ *
+ * Based on:
+ * "9.4 Generating Audio Tones and Fading an LED," Arduino Cookbook by Michael Margolis
+ *
+ * See Arduino Cookbook 5.2 for internal pull-up resistors. 
+ */
+ 
+#include "pitches.h"
+ 
+byte speakerPin = 8;
+byte ledPins[] = {5, 6, 9, 10};    // LED array
+/*
+byte p1LED = 5;
+byte p2LED = 6;
+byte p3LED = 9;
+byte p4LED = 10;
+*/
+ 
+const int p1Button = 12; 
+  
+//const int p1LED = 5;
+//const int p2LED = 6;
+//const int p3LED = 9;
+//const int p4LED = 10;
+
+int brightness = 0;
+int increment = 1;
+
+void setup() {
+  pinMode(speakerPin, OUTPUT);
+  pinMode(p1Button, INPUT);      // Declare pushbutton as input
+  // pins driven by analogWrite do not need to be declared as outputs
+}
+
+void playFrequency(int frequency, int duration) {
+  // Period is one cycle of tone
+  // Period is equal to 1 divided by frequency
+  // Duration is how long the pulsing sound should last in milliseconds
+  int period = 1000000L / frequency;
+  int pulse = period / 2;
+  for (long i = 0; i < duration * 1000L; i += period) {
+    digitalWrite(speakerPin, HIGH);
+    delayMicroseconds(pulse);
+    digitalWrite(speakerPin, LOW);
+    delayMicroseconds(pulse);
+  }
+}
+
+void fadeLED(){
+  for (int brightness = 0; brightness < 255; brightness++) {
+    for (int p = 0; p < 4; p++) {
+      analogWrite(ledPins[p], brightness);
+    }
+    delay(2);
+  }
+  for (int brightness = 255; brightness >= 0; brightness--) {
+    for (int p = 0; p < 4; p++) {
+      analogWrite(ledPins[p], brightness);
+    }
+    delay(2);
+  }
+}
+
+void loop() {
+  // A note with period of 15289 is deep C (second lowest C note on piano)
+  int val = digitalRead(p1Button);    // Read input value
+  if (val == HIGH) {
+    //for (int period = 15289; period >= 477; period = period / 2) {    // Play 6 octaves
+    //  playTone(period, 500);  // Play tone for 200 milliseconds
+    //}
+    playFrequency(NOTE_C5, 500);
+    playFrequency(NOTE_B4, 500);
+    playFrequency(NOTE_G4, 500);
+    playFrequency(NOTE_C5, 250);
+    playFrequency(NOTE_B4, 250);
+    playFrequency(NOTE_E4, 500);
+    delay(1000);
+    //playFrequency(NOTE_B0, 1000);
+    playFrequency(NOTE_C5, 500);
+    playFrequency(NOTE_C4, 500);
+    playFrequency(NOTE_G4, 500);
+    playFrequency(NOTE_A4, 250);
+    playFrequency(NOTE_C5, 250);
+  } else {
+    fadeLED();
+  }
+}
+
+  
+    
+/*
+void loop() {
+  int val = digitalRead(p1Button);    // Read input value
+  if (val == HIGH) {
+    // Do shit
+  }
+    
+  if (brightness > 220) {
+    increment = -1;    // count down after reaching 255
+  } else if (brightness < 1) {
+    increment = 1;     // count up after dropping back down to 0
+  }
+  brightness = brightness + increment;    // increment (or decrement sign is minus)
+  
+  // write the brightness value to the LEDs
+  analogWrite(p1LED, brightness);
+  analogWrite(p2LED, brightness);
+  analogWrite(p3LED, brightness);
+  analogWrite(p4LED, brightness);
+  
+  delay(10);    // 10ms for each step change means 2.55 secs to fade up or down
+} */
